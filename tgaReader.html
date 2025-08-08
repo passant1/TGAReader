@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TGA Image Viewer</title>
+    <style>
+        :root {
+            --bg-start: #f5f7fa;
+            --bg-end: #e4e7eb;
+            --text: #333;
+            --header: #2d3748;
+            --button-bg: #4a5568;
+            --button-hover: #2d3748;
+            --drop-border: #cbd5e0;
+            --drop-bg: #fff;
+            --drop-over-border: #4a5568;
+            --drop-over-bg: #edf2f7;
+            --canvas-bg: #fff;
+            --error: #e53e3e;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --icon-fill: #4a5568;
+        }
+
+        [data-theme="dark"] {
+            --bg-start: #1a202c;
+            --bg-end: #2d3748;
+            --text: #e2e8f0;
+            --header: #edf2f7;
+            --button-bg: #718096;
+            --button-hover: #a0aec0;
+            --drop-border: #4a5568;
+            --drop-bg: #2d3748;
+            --drop-over-border: #a0aec0;
+            --drop-over-bg: #4a5568;
+            --canvas-bg: #2d3748;
+            --error: #feb2b2;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --icon-fill: #e2e8f0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-start: #1a202c;
+                --bg-end: #2d3748;
+                --text: #e2e8f0;
+                --header: #edf2f7;
+                --button-bg: #718096;
+                --button-hover: #a0aec0;
+                --drop-border: #4a5568;
+                --drop-bg: #2d3748;
+                --drop-over-border: #a0aec0;
+                --drop-over-bg: #4a5568;
+                --canvas-bg: #2d3748;
+                --error: #feb2b2;
+                --shadow: rgba(0, 0, 0, 0.3);
+                --icon-fill: #e2e8f0;
+            }
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            color: var(--text);
+            transition: background 0.3s ease, color 0.3s ease;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            font-weight: 600;
+            margin-bottom: clamp(1rem, 3vw, 1.5rem);
+            color: var(--header);
+            text-align: center;
+        }
+        .file-input-wrapper {
+            position: relative;
+            margin: clamp(1rem, 3vw, 1.5rem) 0;
+            display: inline-block;
+        }
+        input[type="file"] {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-input-label {
+            display: inline-block;
+            padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 3vw, 1.5rem);
+            background-color: var(--button-bg);
+            color: white;
+            border-radius: 6px;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            white-space: nowrap;
+        }
+        .file-input-label:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+        }
+        .drop-area {
+            position: relative;
+            padding: clamp(0.5rem, 2vw, 1rem);
+            border: 2px dashed var(--drop-border);
+            border-radius: 8px;
+            background-color: var(--drop-bg);
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+            width: clamp(80%, 90vw, 90%);
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .drop-area.drag-over {
+            border-color: var(--drop-over-border);
+            background-color: var(--drop-over-bg);
+        }
+        canvas {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow);
+            width: 100%;
+            max-width: 100%;
+            max-height: clamp(50vh, 70vh, 80vh);
+            background-color: var(--canvas-bg);
+            object-fit: contain;
+        }
+        #error {
+            color: var(--error);
+            font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+            margin-top: clamp(0.5rem, 2vw, 1rem);
+            text-align: center;
+            max-width: 80%;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: clamp(0.5rem, 2vw, 1rem);
+            right: clamp(0.5rem, 2vw, 1rem);
+            width: clamp(1.5rem, 4vw, 2rem);
+            height: clamp(1.5rem, 4vw, 2rem);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        .theme-toggle svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--icon-fill);
+            transition: fill 0.3s ease;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 0.5rem;
+            }
+            .drop-area {
+                width: 95%;
+            }
+        }
+        @media (min-width: 1200px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            .file-input-label {
+                padding: 1rem 2rem;
+                font-size: 1.1rem;
+            }
+            .drop-area {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>TGA Image Viewer</h1>
+<div class="file-input-wrapper">
+    <label for="fileInput" class="file-input-label">Choose or Drop a TGA File</label>
+    <input type="file" id="fileInput" accept=".tga">
+</div>
+<div class="drop-area" id="dropArea">
+    <canvas id="canvas"></canvas>
+</div>
+<div id="error"></div>
+<div class="theme-toggle" id="themeToggle">
+    <svg id="themeIcon" viewBox="0 0 24 24">
+        <!-- Sun icon (shown in light mode) -->
+        <path class="sun-icon" d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-14v-2m0 16v2m-10-10H0m20 0h2m-1.414-5.586l-1.414-1.414m-12.172 0L5.586 4.586m12.172 12.172l1.414 1.414m-12.172 0l-1.414-1.414"/>
+        <!-- Moon icon (shown in dark mode, hidden initially) -->
+        <path class="moon-icon" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" style="display: none;"/>
+    </svg>
+</div>
+<script>
+    class TGAColor {
+        constructor(bgra = [0, 0, 0, 0], bytespp = 4) {
+            this.bgra = bgra;
+            this.bytespp = bytespp;
+        }
+        get(index) {
+            return this.bgra[index];
+        }
+    }
+
+    class TGAImage {
+        static Format = { GRAYSCALE: 1, RGB: 3, RGBA: 4 };
+
+        constructor() {
+            this.width = 0;
+            this.height = 0;
+            this.bpp = 0;
+            this.data = [];
+        }
+
+        readTGAFile(arrayBuffer) {
+            if (!(arrayBuffer instanceof ArrayBuffer)) {
+                throw new Error("Invalid file data");
+            }
+            const view = new DataView(arrayBuffer);
+            let offset = 0;
+
+            try {
+                const header = {
+                    idlength: view.getUint8(offset),
+                    colormaptype: view.getUint8(offset + 1),
+                    datatypecode: view.getUint8(offset + 2),
+                    colormaporigin: view.getUint16(offset + 3, true),
+                    colormaplength: view.getUint16(offset + 5, true),
+                    colormapdepth: view.getUint8(offset + 7),
+                    x_origin: view.getUint16(offset + 8, true),
+                    y_origin: view.getUint16(offset + 10, true),
+                    width: view.getUint16(offset + 12, true),
+                    height: view.getUint16(offset + 14, true),
+                    bitsperpixel: view.getUint8(offset + 16),
+                    imagedescriptor: view.getUint8(offset + 17)
+                };
+                offset += 18;
+
+                this.width = header.width;
+                this.height = header.height;
+                this.bpp = header.bitsperpixel >> 3;
+
+                if (this.width <= 0 || this.height <= 0 ||
+                    (this.bpp !== TGAImage.Format.GRAYSCALE &&
+                        this.bpp !== TGAImage.Format.RGB &&
+                        this.bpp !== TGAImage.Format.RGBA)) {
+                    throw new Error("Bad bpp (or width/height) value");
+                }
+
+                const nbytes = this.bpp * this.width * this.height;
+                this.data = new Uint8Array(nbytes);
+
+                offset += header.idlength;
+                if (header.colormaptype === 1) {
+                    offset += header.colormaplength * (header.colormapdepth >> 3);
+                }
+
+                if (header.datatypecode === 2 || header.datatypecode === 3) {
+                    if (offset + nbytes > arrayBuffer.byteLength) {
+                        throw new Error("File too small for image data");
+                    }
+                    for (let i = 0; i < nbytes; i++) {
+                        this.data[i] = view.getUint8(offset);
+                        offset++;
+                    }
+                } else if (header.datatypecode === 10 || header.datatypecode === 11) {
+                    if (!this.loadRLEData(view, offset)) {
+                        throw new Error("Error reading RLE data");
+                    }
+                } else {
+                    throw new Error(`Unknown file format ${header.datatypecode}`);
+                }
+
+                if (!(header.imagedescriptor & 0x20)) {
+                    this.flipVertically();
+                }
+                if (header.imagedescriptor & 0x10) {
+                    this.flipHorizontally();
+                }
+
+                return true;
+            } catch (error) {
+                throw new Error(`Parsing error: ${error.message}`);
+            }
+        }
+
+        loadRLEData(view, startOffset) {
+            const pixelcount = this.width * this.height;
+            let currentpixel = 0;
+            let currentbyte = 0;
+            let offset = startOffset;
+            const colorbuffer = new Uint8Array(this.bpp);
+
+            while (currentpixel < pixelcount) {
+                if (offset >= view.byteLength) {
+                    return false;
+                }
+                const chunkheader = view.getUint8(offset);
+                offset++;
+                if (chunkheader < 128) {
+                    const runLength = chunkheader + 1;
+                    for (let i = 0; i < runLength; i++) {
+                        if (offset + this.bpp > view.byteLength) {
+                            return false;
+                        }
+                        for (let t = 0; t < this.bpp; t++) {
+                            colorbuffer[t] = view.getUint8(offset);
+                            offset++;
+                        }
+                        for (let t = 0; t < this.bpp; t++) {
+                            this.data[currentbyte++] = colorbuffer[t];
+                        }
+                        currentpixel++;
+                        if (currentpixel > pixelcount) {
+                            throw new Error("Too many pixels read");
+                        }
+                    }
+                } else {
+                    const runLength = chunkheader - 127;
+                    if (offset + this.bpp > view.byteLength) {
+                        return false;
+                    }
+                    for (let t = 0; t < this.bpp; t++) {
+                        colorbuffer[t] = view.getUint8(offset);
+                        offset++;
+                    }
+                    for (let i = 0; i < runLength; i++) {
+                        for (let t = 0; t < this.bpp; t++) {
+                            this.data[currentbyte++] = colorbuffer[t];
+                        }
+                        currentpixel++;
+                        if (currentpixel > pixelcount) {
+                            throw new Error("Too many pixels read");
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        flipHorizontally() {
+            for (let i = 0; i < this.width / 2; i++) {
+                for (let j = 0; j < this.height; j++) {
+                    for (let b = 0; b < this.bpp; b++) {
+                        const left = (i + j * this.width) * this.bpp + b;
+                        const right = ((this.width - 1 - i) + j * this.width) * this.bpp + b;
+                        [this.data[left], this.data[right]] = [this.data[right], this.data[left]];
+                    }
+                }
+            }
+        }
+
+        flipVertically() {
+            for (let i = 0; i < this.width; i++) {
+                for (let j = 0; j < this.height / 2; j++) {
+                    for (let b = 0; b < this.bpp; b++) {
+                        const top = (i + j * this.width) * this.bpp + b;
+                        const bottom = (i + (this.height - 1 - j) * this.width) * this.bpp + b;
+                        [this.data[top], this.data[bottom]] = [this.data[bottom], this.data[top]];
+                    }
+                }
+            }
+        }
+
+        renderToCanvas(canvas) {
+            canvas.width = this.width;
+            canvas.height = this.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error("Canvas context not available");
+            }
+            const imageData = ctx.createImageData(this.width, this.height);
+            const data = imageData.data;
+
+            for (let i = 0, j = 0; i < this.data.length; i += this.bpp, j += 4) {
+                if (this.bpp === 1) {
+                    data[j] = data[j + 1] = data[j + 2] = this.data[i];
+                    data[j + 3] = 255;
+                } else if (this.bpp === 3) {
+                    data[j] = this.data[i + 2];
+                    data[j + 1] = this.data[i + 1];
+                    data[j + 2] = this.data[i];
+                    data[j + 3] = 255;
+                } else if (this.bpp === 4) {
+                    data[j] = this.data[i + 2];
+                    data[j + 1] = this.data[i + 1];
+                    data[j + 2] = this.data[i];
+                    data[j + 3] = this.data[i + 3];
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    }
+
+    function processFile(file) {
+        if (!file) return;
+        const errorDiv = document.getElementById('error');
+        errorDiv.textContent = '';
+        if (!file.name.toLowerCase().endsWith('.tga')) {
+            errorDiv.textContent = 'Please select a .tga file';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const tga = new TGAImage();
+                tga.readTGAFile(e.target.result);
+                tga.renderToCanvas(document.getElementById('canvas'));
+            } catch (error) {
+                errorDiv.textContent = error.message;
+            }
+        };
+        reader.onerror = () => {
+            errorDiv.textContent = 'Error reading the file';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (event) => {
+        processFile(event.target.files[0]);
+    });
+
+    const dropArea = document.getElementById('dropArea');
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.add('drag-over');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.remove('drag-over');
+        }, false);
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files[0];
+        processFile(file);
+    });
+
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const sunIcon = themeIcon.querySelector('.sun-icon');
+    const moonIcon = themeIcon.querySelector('.moon-icon');
+
+    themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+            sunIcon.style.display = 'block';
+            moonIcon.style.display = 'none';
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        }
+    });
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+    } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+    }
+</script>
+</body>
+</html>
