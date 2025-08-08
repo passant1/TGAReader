@@ -7,3 +7,4 @@
 
 <img width="2559" height="1528" alt="image" src="https://github.com/user-attachments/assets/0905feb9-dc6f-47ee-8751-3a2c013d16fb" />
 
+使用方法：用浏览器打开html文件即可
