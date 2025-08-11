@@ -216,6 +216,7 @@
             this.width = 0;
             this.height = 0;
             this.bpp = 0;
+            this.alpha_bits = 0;
             this.data = [];
         }
 
@@ -243,9 +244,13 @@
                 };
                 offset += 18;
 
+                // Log header for debugging (open browser console to see)
+                console.log('TGA Header:', header);
+
                 this.width = header.width;
                 this.height = header.height;
                 this.bpp = header.bitsperpixel >> 3;
+                this.alpha_bits = header.imagedescriptor & 0x0F;
 
                 if (this.width <= 0 || this.height <= 0 ||
                     (this.bpp !== TGAImage.Format.GRAYSCALE &&
@@ -384,15 +389,15 @@
                     data[j] = data[j + 1] = data[j + 2] = this.data[i];
                     data[j + 3] = 255;
                 } else if (this.bpp === 3) {
-                    data[j] = this.data[i + 2];
-                    data[j + 1] = this.data[i + 1];
-                    data[j + 2] = this.data[i];
+                    data[j] = this.data[i + 2]; // R
+                    data[j + 1] = this.data[i + 1]; // G
+                    data[j + 2] = this.data[i]; // B
                     data[j + 3] = 255;
                 } else if (this.bpp === 4) {
-                    data[j] = this.data[i + 2];
-                    data[j + 1] = this.data[i + 1];
-                    data[j + 2] = this.data[i];
-                    data[j + 3] = this.data[i + 3];
+                    data[j] = this.data[i + 2]; // R
+                    data[j + 1] = this.data[i + 1]; // G
+                    data[j + 2] = this.data[i]; // B
+                    data[j + 3] = (this.alpha_bits > 0 ? this.data[i + 3] : 255); // Use alpha if defined, else opaque
                 }
             }
             ctx.putImageData(imageData, 0, 0);
